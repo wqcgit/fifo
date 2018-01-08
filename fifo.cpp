@@ -67,18 +67,18 @@ int CFifoWithmmap::init(const std::string& file, unsigned int size, int type/* =
 		return -1;
 	}
 
-	//int open_flag = (type ? O_CREAT | O_RDWR : O_CREAT | O_RDWR | O_TRUNC);
+	int open_flag = (type ? O_CREAT | O_RDWR : O_CREAT | O_RDWR | O_TRUNC);
 	m_mapsize = sizeof(CFifoWithmmap::fifoCtl) + size;
-	/// todo: file must exist first???
-	if (truncate(file.c_str(), m_mapsize))
-	{
-		printf("file truncate file failed:%d!\n", errno);
-		return -1;
-	}
-	int fd = ::open(file.c_str(), O_RDWR, 00777);
+	int fd = ::open(file.c_str(), open_flag, 00777);
 	if (fd < 0)
 	{
 		printf("fifo open %s failed:%d\n", file.c_str(), errno);
+		return -1;
+	}
+	if (ftruncate(fd, m_mapsize))
+	{
+		printf("file truncate file failed:%d!\n", errno);
+		::close(fd);
 		return -1;
 	}
 	void* mapAddr = ::mmap(0, m_mapsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -91,8 +91,7 @@ int CFifoWithmmap::init(const std::string& file, unsigned int size, int type/* =
 	m_mmap = (unsigned char*)mapAddr;
 	::close(fd);
 
-	printf("debug: m_mmap = %p\n", m_mmap);
-	printf("-----------\n");
+	printf("fifo map addr = %p\n", m_mmap);
 	/// create
 	if (!type)
 	{
